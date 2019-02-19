@@ -13,6 +13,7 @@ from .forms import QueryForm
 import pandas as pd
 import json
 import pdb
+import random
 
 max_usage = 25000
 query_output = ""
@@ -51,15 +52,16 @@ def query_handle(request):
             query = form.cleaned_data['query']
             file_name = form.cleaned_data['file_name']
             if query_type[0] == 'Pandas':
-                pandas_handler(file_name, query)
-                pdb.set_trace()
-                return redirect('leaflet?file=' + file_name[0:-4] + 'query.csv')
+                query_file_name = pandas_handler(file_name, query)
+                return redirect('leaflet?file=' + query_file_name) 
     else:
         return None
 
 def pandas_handler(file_name, query):
     global query_output
     global query_df
+    r_int = random.randint(1,1001)
+    query_file_name = file_name[0:-4] + 'query' + str(r_int) + '.csv'
     query_df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, "documents", file_name))
     dotIndex = query.find('.')
     if dotIndex == -1:
@@ -69,13 +71,13 @@ def pandas_handler(file_name, query):
         command = "query_output = query_df." + init_query
         exec(command, globals())
     if isinstance(query_output, pd.DataFrame):
-        file_name = file_name[0:-4] + 'query.csv'
-        csv_path = os.path.join(settings.MEDIA_ROOT, 'documents', file_name)
+        csv_path = os.path.join(settings.MEDIA_ROOT, 'documents', query_file_name)
         query_output.to_csv(csv_path, index=False)
         csv_file = open(csv_path)
-        newDoc = Document(file_name=file_name, rows=0, columns=0)
+        newDoc = Document(file_name=query_file_name, rows=0, columns=0)
         newDoc.docfile.name = csv_path
         newDoc.save()
+    return query_file_name
 
 def tilecount(request):
     """

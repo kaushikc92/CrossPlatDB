@@ -3,7 +3,6 @@ from django.shortcuts import render, redirect
 
 from tiler.forms import DocumentForm
 from tiler.models.Document import Document
-import pdb
 
 def file_with_same_name_exists(request):
     return HttpResponse(False)
@@ -32,7 +31,6 @@ def list_files(request):
     the csv viewer page in case of POST request.
     """
     if request.method == 'POST':
-        pdb.set_trace()
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid() and not file_exists_in_db(request.FILES['docfile'].name):
             newdoc = Document(file_name=request.FILES['docfile'].name, docfile=request.FILES['docfile'],
