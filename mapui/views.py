@@ -2,16 +2,21 @@ import os, shutil
 
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.db.models import Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from tiler.models.Document import Document, TiledDocument
 from tiler.views import convert_html
+from .forms import QueryForm
+import pandas as pd
 import json
+import pdb
 
 max_usage = 25000
+query_output = ""
+query_df = None
 
 def index(request):
     return HttpResponse("Hello, world. You're at the map ui index.")
@@ -28,13 +33,49 @@ def leaflet(request):
         HTTPResponse containing html for the leaflet JS based csv viewer 
 
     """
+    
     file_name = request.GET.get("file")
 
     rows, columns = check_csv(file_name)
 
     output_name = file_name[:-4] + ".html"
-    context = {'file': file_name, 'rows': str(rows), 'columns': str(columns)}
+    form = QueryForm(initial={'file_name':file_name})
+    context = {'form': form, 'file': file_name, 'rows': str(rows), 'columns': str(columns)}
     return render(request, 'leaflet_map.html', context)
+
+def query_handle(request):
+    if request.method == 'POST':
+        form = QueryForm(request.POST)
+        if form.is_valid():
+            query_type = form.cleaned_data['query_type']
+            query = form.cleaned_data['query']
+            file_name = form.cleaned_data['file_name']
+            if query_type[0] == 'Pandas':
+                pandas_handler(file_name, query)
+                pdb.set_trace()
+                return redirect('leaflet?file=' + file_name[0:-4] + 'query.csv')
+    else:
+        return None
+
+def pandas_handler(file_name, query):
+    global query_output
+    global query_df
+    query_df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, "documents", file_name))
+    dotIndex = query.find('.')
+    if dotIndex == -1:
+        query_output = query_df
+    else:
+        init_query = query[dotIndex+1:len(query)]
+        command = "query_output = query_df." + init_query
+        exec(command, globals())
+    if isinstance(query_output, pd.DataFrame):
+        file_name = file_name[0:-4] + 'query.csv'
+        csv_path = os.path.join(settings.MEDIA_ROOT, 'documents', file_name)
+        query_output.to_csv(csv_path, index=False)
+        csv_file = open(csv_path)
+        newDoc = Document(file_name=file_name, rows=0, columns=0)
+        newDoc.docfile.name = csv_path
+        newDoc.save()
 
 def tilecount(request):
     """

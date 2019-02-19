@@ -62,6 +62,13 @@
      {{ file }}: {{ rows }} rows, {{ columns }} columns
     </h3>
 </div>
+<form action="{% url 'query' %}" method="post"> 
+    {% csrf_token %}
+    {{ form.query_type }}
+    {{ form.query }}
+    {{ form.file_name }}
+    <input type="submit" value="Submit">
+</form>
 <div id="mapid"></div>
 <script>
     window_width = $( window ).width();
