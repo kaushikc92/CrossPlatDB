@@ -4,6 +4,7 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.db.models import Sum
+from django.db import connection
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
@@ -11,9 +12,10 @@ from tiler.models.Document import Document, TiledDocument
 from tiler.views import convert_html
 from .forms import QueryForm
 import pandas as pd
-import json
+import json, random, csv
 import pdb
-import random
+
+from sqlalchemy import create_engine
 
 max_usage = 25000
 query_output = ""
@@ -54,6 +56,9 @@ def query_handle(request):
             if query_type[0] == 'Pandas':
                 query_file_name = pandas_handler(file_name, query)
                 return redirect('leaflet?file=' + query_file_name) 
+            elif query_type[0] == 'SQL':
+                query_file_name = sql_handler(file_name, query)
+                return redirect('leaflet?file=' + query_file_name) 
     else:
         return None
 
@@ -77,6 +82,25 @@ def pandas_handler(file_name, query):
         newDoc = Document(file_name=query_file_name, rows=0, columns=0)
         newDoc.docfile.name = csv_path
         newDoc.save()
+    return query_file_name
+
+def sql_handler(file_name, query):
+    r_int = random.randint(1,1001)
+    query_file_name = file_name[0:-4] + 'query' + str(r_int) + '.csv'
+    query_df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, "documents", file_name))
+
+    db_path = os.path.join(settings.BASE_DIR, 'db.sqlite3')
+    engine = create_engine('sqlite:///' + db_path)
+    query_df.to_sql(file_name[0:-4], engine, if_exists='replace', index=False)
+    sql_df = pd.read_sql_query(sql=query, con=engine)
+
+    csv_path = os.path.join(settings.MEDIA_ROOT, 'documents', query_file_name)
+    sql_df.to_csv(csv_path, index=False)
+    csv_file = open(csv_path)
+    newDoc = Document(file_name=query_file_name, rows=0, columns=0)
+    newDoc.docfile.name = csv_path
+    newDoc.save()
+
     return query_file_name
 
 def tilecount(request):
