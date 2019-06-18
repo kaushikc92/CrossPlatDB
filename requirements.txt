@@ -3,4 +3,4 @@ pandas
 imgkit
 pillow
 pandas_profiling
-
+SQLAlchemy 

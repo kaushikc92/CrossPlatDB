@@ -15,14 +15,15 @@ RUN apt-get install -y vim
 
 # RUN apt-get install -y xvfb
 
-WORKDIR /cloud_browser
-ADD . /MagickTable
+WORKDIR /code
+ADD . ./
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 RUN python manage.py makemigrations
 RUN python manage.py migrate
 
+RUN mkdir ./media/tiles
 # Remove this!
-RUN chmod -R 777 /MagickTable/media
+RUN chmod -R 777 ./media
 
 
 # Make port 8000 available to the world outside this container
